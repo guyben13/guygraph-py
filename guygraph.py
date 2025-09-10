@@ -3,19 +3,13 @@ import pygame
 from pygame.locals import *
 import random
 
-pygame.init()
-clock = None
-window = None
+_clock = None
+_window = None
+_width = 600
+_height = 300
 
 def _point(x, y):
   return int(x), int(y)
-
-def Update():
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
-  pygame.display.update()
 
 AUTO_UPDATE = True
 
@@ -24,61 +18,65 @@ def _autoupdate():
     pygame.display.update()
 
 def InitScreen(width, height, auto_update=True):
-  global window, clock, AUTO_UPDATE
-  if window is not None:
+  global _window, _clock, AUTO_UPDATE, _width, _height
+  if _window is not None:
     CloseScreen()
-# print("Error! Can only call InitScreen once")
-# return
-  window = pygame.display.set_mode((width, height))
-  clock = pygame.time.Clock()
+
+  _width = width
+  _height = height
+  pygame.init()
+  _window = pygame.display.set_mode((width, height))
+  _clock = pygame.time.Clock()
   AUTO_UPDATE = auto_update
 
 def CloseScreen():
-  global window
-  if window is None:
-    print("Must call InitScreen")
+  global _window
+  if _window is None:
     return
-  window = None
+  _window = None
   pygame.quit()
 
+def _get_window():
+  global _window
+  if _window is None:
+    InitScreen(_width, _height)
+  return _window
+
+def GetWidth():
+  global _width
+  return _width
+
+def GetHeight():
+  global _height
+  return _height
+
+def Update():
+  window = _get_window()
+  pygame.display.update()
+
 def ClearScreen(c=(0, 0, 0)):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
+  window = _get_window()
   window.fill(c)
   _autoupdate()
 
 def PutPixel(x, y, c=(255, 255, 255)):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
-  window.set_at(_point(x, y), c)
+  window = _get_window()
+  window.set_at((int(x), int(y)), c)
   _autoupdate()
 
 def GetPixel(x, y):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return (0, 0, 0, 0)
-  return window.get_at(_point(x, y))
+  window = _get_window()
+  return window.get_at((int(x), int(y)))
 
 def DrawLine(x0, y0, x1, y1, c=(255, 255, 255), w=1):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
+  window = _get_window()
   pygame.draw.line(
       window, c, (x0, y0), (x1, y1),
       width=w)
   _autoupdate()
 
 def DrawRect(x, y, width, height, c=(255, 255, 255), w=0, r=0):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
+  window = _get_window()
   pygame.draw.rect(
       window, c,
       pygame.Rect((x, y), (width, height)),
@@ -86,33 +84,24 @@ def DrawRect(x, y, width, height, c=(255, 255, 255), w=0, r=0):
   _autoupdate()
 
 def DrawCircle(x, y, r, c=(255, 255, 255), w=0):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
+  window = _get_window()
   pygame.draw.circle(window, c,
       (x,y),
       r, width=w)
   _autoupdate()
 
 def DrawText(x, y, text, c=(255,255,255), s=20, font="Monospace"):
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
+  window = _get_window()
   font = pygame.font.SysFont(font, int(s))
   surface = font.render(text, True, c)
   window.blit(surface, (x, y))
   _autoupdate()
 
 def Wait():
-  global window
-  if window is None:
-    print("Must call InitScreen")
-    return
+  window = _get_window()
   if not AUTO_UPDATE:
     Update()
-  clock.tick(30)
+  _clock.tick(30)
 
 _keys = {}
 
@@ -169,8 +158,8 @@ _key_mapping = {
 }
 
 def _update_events():
-  global window
-  if window is None:
+  global _window
+  if _window is None:
     return False
   for event in pygame.event.get():
     if event.type == pygame.KEYDOWN:
@@ -186,6 +175,7 @@ def IsRunning():
   return _update_events()
 
 def GetKey(key):
+  window = _get_window()
   if not _update_events():
     return 0
   key = _key_mapping[key.upper()]
