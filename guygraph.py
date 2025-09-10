@@ -171,7 +171,7 @@ def _update_events():
       return False
   return True
 
-def IsRunning():
+def HasScreen():
   return _update_events()
 
 def GetKey(key):
