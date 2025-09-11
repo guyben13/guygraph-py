@@ -7,6 +7,9 @@ _clock = None
 _window = None
 _width = 600
 _height = 300
+_keys = {}
+_images = {}
+_sprites = {}
 
 def _point(x, y):
   return int(x), int(y)
@@ -22,6 +25,9 @@ def InitScreen(width, height, auto_update=True):
   if _window is not None:
     CloseScreen()
 
+  _keys = {}
+  _images = {}
+  _sprites = {}
   _width = width
   _height = height
   pygame.init()
@@ -42,13 +48,11 @@ def _get_window():
     InitScreen(_width, _height)
   return _window
 
-def GetWidth():
-  global _width
-  return _width
+def ScreenWidth():
+  return _get_window.get_width()
 
-def GetHeight():
-  global _height
-  return _height
+def ScreenHeight():
+  return _get_window.get_height()
 
 def Update():
   window = _get_window()
@@ -90,20 +94,47 @@ def DrawCircle(x, y, r, c=(255, 255, 255), w=0):
       r, width=w)
   _autoupdate()
 
+def _arange_text(font, text):
+  if isinstance(text, str):
+    text = [text]
+  text = sum([i.split('\n') for i in text], [])
+  w=0
+  h=0
+  res=[]
+  for t in text:
+    dw, dh = font.size(t)
+    res.append((0, h, t))
+    h += dh
+    w = max(w, dw)
+  return w, h, res
+
+def _create_text_surface(text, c=(255,255,255), s=10, font="Monospace"):
+  window = _get_window()
+  font = pygame.font.SysFont(font, int(s))
+  w, h, texts = _arange_text(font, text)
+  res = pygame.Surface((w,h), 0, window)
+  for dx,dy,t in texts:
+    surface = font.render(t, True, c)
+    res.blit(surface, (dx, dy))
+  return res
+
+
+
 def DrawText(x, y, text, c=(255,255,255), s=20, font="Monospace"):
   window = _get_window()
   font = pygame.font.SysFont(font, int(s))
-  surface = font.render(text, True, c)
-  window.blit(surface, (x, y))
+  w, h, texts = _arange_text(font, text)
+  for dx,dy,t in texts:
+    surface = font.render(t, True, c)
+    window.blit(surface, (x+dx, y+dy))
   _autoupdate()
+  return w, h
 
 def Wait():
   window = _get_window()
   if not AUTO_UPDATE:
     Update()
   _clock.tick(30)
-
-_keys = {}
 
 _key_mapping = {
   "SPACE": pygame.K_SPACE,
@@ -184,4 +215,45 @@ def GetKey(key):
     _keys[key] = res + 1
   return res
 
+def LoadSprite(name, fname):
+  window = _get_window()
+  if fname not in _images:
+    try:
+      image = pygame.image.load(fname).convert_alpha(window)
+    except (pygame.error, FileNotFoundError) as e:
+      print(f"Error reading file {fname}: {e}")
+      image = _create_text_surface(f"Error loading sprite {name}\nProblem reading file\n{fname}")
+    _images[fname] = image
+  else:
+    image = _images[fname]
+  _sprites[name] = image
+  return image.get_size()
+
+def _get_sprite(name):
+  res = _sprites.get(name, None)
+  if res is None:
+    print(f"Error: couldn't find sprite named {name}")
+    font = pygame.font.SysFont("Monospace", 10)
+    res = _create_text_surface(f"Error:\nCouldn't find sprite named\n{name}")
+    _sprites[name] = res
+  return res
+
+def SpriteWidth(name):
+  return _get_sprite(name).get_width()
+
+def SpriteHeight(name):
+  return _get_sprite(name).get_height()
+
+def DrawSprite(name, x, y):
+  window = _get_window()
+  sprite = _get_sprite(name)
+  window.blit(sprite, (x,y))
+  _autoupdate()
+
+def CreateSubsprite(name, x,y,w,h, new_name):
+  window = _get_window()
+  sprite = _get_sprite(name)
+  sub_sprite = sprite.subsurface(pygame.Rect((x, y), (w, h)))
+  _sprites[new_name] = sub_sprite
+  return sub_sprite.get_size()
 
