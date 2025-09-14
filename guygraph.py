@@ -11,9 +11,6 @@ _keys = {}
 _images = {}
 _sprites = {}
 
-def _point(x, y):
-  return int(x), int(y)
-
 AUTO_UPDATE = True
 
 def _autoupdate():
@@ -54,7 +51,7 @@ def ScreenWidth():
 def ScreenHeight():
   return _get_window.get_height()
 
-def Update():
+def UpdateScreen():
   window = _get_window()
   pygame.display.update()
 
@@ -108,18 +105,6 @@ def _arange_text(font, text):
     w = max(w, dw)
   return w, h, res
 
-def _create_text_surface(text, c=(255,255,255), s=10, font="Monospace"):
-  window = _get_window()
-  font = pygame.font.SysFont(font, int(s))
-  w, h, texts = _arange_text(font, text)
-  res = pygame.Surface((w,h), 0, window)
-  for dx,dy,t in texts:
-    surface = font.render(t, True, c)
-    res.blit(surface, (dx, dy))
-  return res
-
-
-
 def DrawText(x, y, text, c=(255,255,255), s=20, font="Monospace"):
   window = _get_window()
   font = pygame.font.SysFont(font, int(s))
@@ -130,11 +115,86 @@ def DrawText(x, y, text, c=(255,255,255), s=20, font="Monospace"):
   _autoupdate()
   return w, h
 
+def _create_error_sprite(text):
+  print(text)
+  c=(255,255,255)
+  s=10
+  font="Monospace"
+  line_c=(255, 0, 0)
+  window = _get_window()
+  font = pygame.font.SysFont(font, int(s))
+  w, h, texts = _arange_text(font, text)
+  res = pygame.Surface((w+1,h+1), 0, window)
+  pygame.draw.rect(
+      res, line_c,
+      pygame.Rect((0,0), (w,h)),
+      width=1)
+  pygame.draw.line(
+      res, line_c,
+      (0,0), (w,h),
+      width=1)
+  pygame.draw.line(
+      res, line_c,
+      (0,h), (w,0),
+      width=1)
+  for dx,dy,t in texts:
+    surface = font.render(t, True, c)
+    res.blit(surface, (dx, dy))
+  return res
+
+def _get_sprite(name):
+  res = _sprites.get(name, None)
+  if res is None:
+    res = _create_error_sprite(f"Error:\nCouldn't find sprite named\n{name}")
+    _sprites[name] = res
+  return res
+
+def DrawSprite(name, x, y):
+  window = _get_window()
+  sprite = _get_sprite(name)
+  window.blit(sprite, (x,y))
+  _autoupdate()
+
+def CopyToSprite(name, x, y, w, h, remove_color=None):
+  window = _get_window()
+  sprite = window.subsurface(pygame.Rect((x, y), (w, h))).copy()
+  if remove_color is not None:
+    sprite.set_colorkey(remove_color)
+  _sprites[name] = sprite
+
+def LoadSprite(name, fname):
+  window = _get_window()
+  if fname not in _images:
+    try:
+      image = pygame.image.load(fname).convert_alpha(window)
+    except (pygame.error, FileNotFoundError) as e:
+      print(f"Error reading file {fname}: {e}")
+      image = _create_error_sprite(f"Error loading sprite {name}\nProblem reading file\n{fname}")
+    _images[fname] = image
+  else:
+    image = _images[fname]
+  _sprites[name] = image
+  return image.get_size()
+
+def CreateSubsprite(name, x,y,w,h, new_name):
+  window = _get_window()
+  sprite = _get_sprite(name)
+  sub_sprite = sprite.subsurface(pygame.Rect((x, y), (w, h)))
+  _sprites[new_name] = sub_sprite
+  return sub_sprite.get_size()
+
+def SpriteWidth(name):
+  return _get_sprite(name).get_width()
+
+def SpriteHeight(name):
+  return _get_sprite(name).get_height()
+
 def Wait():
   window = _get_window()
   if not AUTO_UPDATE:
-    Update()
+    UpdateScreen()
   _clock.tick(30)
+  return _update_events()
 
 _key_mapping = {
   "SPACE": pygame.K_SPACE,
@@ -214,46 +274,4 @@ def GetKey(key):
   if res > 0:
     _keys[key] = res + 1
   return res
-
-def LoadSprite(name, fname):
-  window = _get_window()
-  if fname not in _images:
-    try:
-      image = pygame.image.load(fname).convert_alpha(window)
-    except (pygame.error, FileNotFoundError) as e:
-      print(f"Error reading file {fname}: {e}")
-      image = _create_text_surface(f"Error loading sprite {name}\nProblem reading file\n{fname}")
-    _images[fname] = image
-  else:
-    image = _images[fname]
-  _sprites[name] = image
-  return image.get_size()
-
-def _get_sprite(name):
-  res = _sprites.get(name, None)
-  if res is None:
-    print(f"Error: couldn't find sprite named {name}")
-    font = pygame.font.SysFont("Monospace", 10)
-    res = _create_text_surface(f"Error:\nCouldn't find sprite named\n{name}")
-    _sprites[name] = res
-  return res
-
-def SpriteWidth(name):
-  return _get_sprite(name).get_width()
-
-def SpriteHeight(name):
-  return _get_sprite(name).get_height()
-
-def DrawSprite(name, x, y):
-  window = _get_window()
-  sprite = _get_sprite(name)
-  window.blit(sprite, (x,y))
-  _autoupdate()
-
-def CreateSubsprite(name, x,y,w,h, new_name):
-  window = _get_window()
-  sprite = _get_sprite(name)
-  sub_sprite = sprite.subsurface(pygame.Rect((x, y), (w, h)))
-  _sprites[new_name] = sub_sprite
-  return sub_sprite.get_size()
 
